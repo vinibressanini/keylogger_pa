@@ -29,4 +29,5 @@ Por fim, no termimal rode `python test.py`, a aplicação começará a rodar e j
 
 O resultado deverá ser parecido com isso
 
-![image](https://user-images.githubusercontent.com/91560062/199599690-21cadbc6-eab8-4b15-988f-27d562712985.png)
+![image](https://user-images.githubusercontent.com/91560062/200194978-a74d6298-fda0-474f-a39a-0390659aadee.png)
+
