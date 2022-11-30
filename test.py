@@ -10,7 +10,6 @@ SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
 redis = Client(host="localhost", port=6379, decode_responses=True)
 hostname = socket.gethostname()
-
 data = {
     'hostname': hostname,
     'logs': []
