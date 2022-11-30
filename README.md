@@ -10,11 +10,7 @@ Se tudo der certo o container estará executando. No Docker Desktop, vá até o 
 
 Uma vez dentro do Redis digite `redis-cli` para entrar. Pronto, a parte do banco está completa.
 
-No VSCode de um clone do projeto. Se por acaso tiver algum erro nas importações do redis e/ou do keyboard, rode os seguintes comandos
-
-`pip install redis`
-`pip install keyboard`
-`pip install rejson`
+No VSCode de um clone do projeto. Se por acaso tiver algum erro nas importações do redis e/ou do keyboard, execute o arquivo activate.bat no cmd.
 
 Por fim, no terminal rode `python test.py`, a aplicação começará a rodar e já poderá ser testada. No Docker Desktop aberto anteriormente rode o seguinte comando para verificar se as informações esão sendo coletadas
 
